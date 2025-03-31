@@ -27,5 +27,24 @@ class NGramModel:
             total = sum(self.ngrams[context].values())+alpha*vocab_size
             for word in self.vocab:
                 self.ngrams[context][word] = (self.ngrams[context].get(word, 0) + alpha)/total
+
+    
+    def predict(self, text, top_k=3):
+        tokens = preprocess(text)
+        context = tuple(tokens[-(self.n-1):])
+
+
+        #backoff mechanism
+        while len(context)>0:
+            if context in self.ngrams:
+                suggestions = sorted(self.ngrams[context].items(),key=lambda x: -x[1])[:top_k]
+                return [word for word, prob in suggestions]
+            context = context[1:]#remove oldest word for backoff
             
         
+        #final fallback to unigrams
+        unigrams = defaultdict(int)
+        for word in self.vocab:
+            for context in self.ngrams:
+                unigrams[word] += self.ngrams[context].get(word,0)
+        return sorted(unigrams.items(), key=lambda x: -x[1])[:top_k]
